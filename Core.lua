@@ -9,6 +9,11 @@ local addon = ns.addon
 ns.plates = {}        -- unit token -> pf (filled by Plate.lua)
 ns.barsHidden = false -- runtime only, never saved
 
+-- Option tabs added by element files: { key, order, reset = { profile keys }, build = function(o) return group end }.
+-- Options.lua builds them lazily and passes its constructors as o (see Build there).
+ns.optionSections = {}
+function ns.RegisterOptions(section) ns.optionSections[#ns.optionSections + 1] = section end
+
 -- Globals required by Bindings.xml.
 BINDING_HEADER_BABONYAPLATES = "BabonyaPlates"
 BINDING_NAME_BABONYAPLATES_TOGGLE = "Toggle health bars"
@@ -47,7 +52,7 @@ end
 
 local function AnyOn(P, key)
   local c = P.categories[key]
-  return c.name or c.bar or c.power
+  return c.name or c.bar or c.power or c.cast or c.auras
 end
 
 -- Floating engine names are replaced by ours. Own/guild/title CVars are left alone.

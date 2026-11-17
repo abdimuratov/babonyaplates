@@ -15,5 +15,9 @@ Elements/ComboPoints.lua
 Elements/RaidMarker.lua
 Elements/QuestIcon.lua
 Elements/Highlight.lua
+Elements/CastBar.lua
+Elements/Auras.lua
+Elements/Classification.lua
 Options.lua
+ImportExport.lua
 Editor.lua

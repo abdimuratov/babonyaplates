@@ -11,6 +11,7 @@ local UnitIsTapDenied, UnitSelectionColor, UnitIsUnit = UnitIsTapDenied, UnitSel
 local AbbreviateNumbers = AbbreviateNumbers
 local ScaleTo100 = CurveConstants and CurveConstants.ScaleTo100
 local BackdropTemplate = BackdropTemplateMixin and "BackdropTemplate"
+local UnitThreatSituation, UnitAffectingCombat = UnitThreatSituation, UnitAffectingCombat
 local floor, pairs, type = math.floor, pairs, type
 
 local pfByPlate = setmetatable({}, { __mode = "k" })  -- plate -> pf (lives as long as the plate)
@@ -21,6 +22,14 @@ local elements = {}
 local elementHandlers = {}   -- event -> list of element handlers
 local coreHandlers = {}      -- event -> function(...)
 local styleVersion = 1
+local autoTank               -- cached auto role (nil = recompute on next use)
+local curveCache = {}        -- base colour key -> execute colour curve; wiped when settings change
+local THREAT_CATS = { hostileNPC = true, neutralNPC = true }
+local EXECUTE_CATS = { enemyPlayer = true, hostileNPC = true, neutralNPC = true }
+-- Absorb overlay needs the heal-prediction calculator (ThreatPlates Init.lua:139, Healthbar.lua:473-480).
+local HAS_ABSORBS = type(UnitGetTotalAbsorbs) == "function" and type(CreateUnitHealPredictionCalculator) == "function"
+  and type(UnitGetDetailedHealPrediction) == "function" and Enum.UnitDamageAbsorbClampMode ~= nil
+ns.inCombat = InCombatLockdown() and true or false
 
 -- Surnames: on WoW Forever UnitName's 2nd return is a surname when regional unique names are on
 -- (ThreatPlates Init.lua:110-131); on other clients it is a realm, which we do not show.
@@ -96,8 +105,21 @@ function ns.CreatePlateFrames(parent)
   pf.border = CreateFrame("Frame", nil, health, BackdropTemplate)
   pf.border:EnableMouse(false)
 
-  pf.hpText = health:CreateFontString(nil, "OVERLAY")
+  -- HP text sits on its own frame above the absorb overlay (health +1) so the shield never covers it.
+  local textFrame = CreateFrame("Frame", nil, health)
+  textFrame:SetAllPoints(health)
+  textFrame:SetFrameLevel(health:GetFrameLevel() + 2)
+  pf.hpText = textFrame:CreateFontString(nil, "OVERLAY")
   pf.hpText:SetFontObject(GameFontNormalSmall)
+
+  -- Absorb shield overlay: starts at the right edge of the health fill (anchored in StylePlate).
+  local absorb = CreateFrame("StatusBar", nil, health)
+  absorb:SetFrameLevel(health:GetFrameLevel() + 1)
+  absorb:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+  absorb:SetMinMaxValues(0, 1)
+  absorb:SetValue(0)
+  absorb:Hide()
+  pf.absorb = absorb
 
   -- On root, not health: names stay visible when the bar group is hidden.
   pf.name = root:CreateFontString(nil, "OVERLAY")
@@ -169,6 +191,14 @@ function ns.StylePlate(pf)
   ns.ApplyPos(pf.hpText, pf.health, P.hpText.pos)
   pf.hpText:SetShown(P.hpText.mode ~= "none")
 
+  local ab, hfill = P.absorbs, pf.health:GetStatusBarTexture()
+  pf.absorb:SetStatusBarTexture(ns.Fetch("statusbar", b.texture))
+  pf.absorb:GetStatusBarTexture():SetVertexColor(ab.color.r, ab.color.g, ab.color.b, ab.color.a)
+  pf.absorb:SetWidth(b.width)
+  pf.absorb:ClearAllPoints()
+  pf.absorb:SetPoint("TOPLEFT", hfill, "TOPRIGHT")
+  pf.absorb:SetPoint("BOTTOMLEFT", hfill, "BOTTOMRIGHT")
+
   pf.power:SetStatusBarTexture(ns.Fetch("statusbar", b.texture))
   pf.power:SetSize(b.width, P.power.height)
   ns.ApplyPos(pf.power, pf.health, P.power.pos)
@@ -194,11 +224,40 @@ function ns.ApplyHitTest(pf)
   end
 end
 
+-- Damage absorb overlay; the values go from the calculator straight into the StatusBar (ThreatPlates Healthbar.lua:201-221).
+local function UpdateAbsorbs(pf)
+  local sb = pf.absorb
+  if not (HAS_ABSORBS and pf.unit and pf.showBar and ns.P.absorbs.enabled) then
+    pf.absorbWanted = false -- also covers the editor preview, which has no unit
+    sb:Hide()
+    return
+  end
+  local calc = pf.absorbCalc
+  if not calc then
+    calc = CreateUnitHealPredictionCalculator()
+    calc:SetDamageAbsorbClampMode(Enum.UnitDamageAbsorbClampMode.MissingHealthWithoutIncomingHeals)
+    pf.absorbCalc = calc
+  end
+  UnitGetDetailedHealPrediction(pf.unit, nil, calc)
+  sb:SetMinMaxValues(0, calc:GetMaximumHealth())
+  sb:SetValue((calc:GetDamageAbsorbs()))
+  pf.absorbWanted = true
+  -- A freshly shown bar renders full width for one frame (Healthbar.lua:84-96): show it a frame later.
+  if not sb:IsShown() and not pf.absorbPending then
+    pf.absorbPending = true
+    C_Timer.After(0, function()
+      pf.absorbPending = false
+      if pf.absorbWanted then sb:Show() end
+    end)
+  end
+end
+
 -- Shows/hides our regions from pf.showName / showBar / showPower. The editor sets those flags itself.
 function ns.ApplyVisibility(pf)
   pf.health:SetShown(pf.showBar)
   pf.name:SetShown(pf.showName)
   pf.power:SetShown(pf.showPower and pf.hasPower)
+  UpdateAbsorbs(pf)
   ns.ApplyHitTest(pf)
 end
 
@@ -277,41 +336,108 @@ local function UpdatePower(pf)
   pf.power:GetStatusBarTexture():SetVertexColor(col.r, col.g, col.b)
 end
 
--- Returns r, g, b, a. Possibly-secret values only travel from the Unit* API into color setters.
+-- Returns r, g, b, a, tapped. Possibly-secret values only travel from the Unit* API into color setters.
 local function UnitColor(pf)
   local unit, C = pf.unit, ns.P.colors
   local c
 
   if IsTrue(UnitIsTapDenied(unit)) then
-    c = C.tapped
-  else
-    local isPlayer = IsTrue(UnitIsPlayer(unit))
-    if isPlayer and C.classColors then
-      local _, class = UnitClass(unit)
-      if not issecretvalue(class) and class then c = RAID_CLASS_COLORS[class] end
-    end
-    if not c then
-      local reaction = UnitReaction(unit, "player")
-      if not issecretvalue(reaction) and reaction then
-        -- Enemy players turn neutral e.g. when mounted: still hostile (ThreatPlates Nameplate.lua:505-508).
-        if reaction <= 3 or (isPlayer and reaction == 4) then c = C.hostile
-        elseif reaction == 4 then c = C.neutral
-        else c = C.friendly end
-      else
-        local r, g, b = UnitSelectionColor(unit)
-        if type(r) == "number" then return r, g, b, 1 end
-        c = C.hostile
-      end
+    return C.tapped.r, C.tapped.g, C.tapped.b, C.tapped.a or 1, true
+  end
+  local isPlayer = IsTrue(UnitIsPlayer(unit))
+  if isPlayer and C.classColors then
+    local _, class = UnitClass(unit)
+    if not issecretvalue(class) and class then c = RAID_CLASS_COLORS[class] end
+  end
+  if not c then
+    local reaction = UnitReaction(unit, "player")
+    if not issecretvalue(reaction) and reaction then
+      -- Enemy players turn neutral e.g. when mounted: still hostile (ThreatPlates Nameplate.lua:505-508).
+      if reaction <= 3 or (isPlayer and reaction == 4) then c = C.hostile
+      elseif reaction == 4 then c = C.neutral
+      else c = C.friendly end
+    else
+      local r, g, b = UnitSelectionColor(unit)
+      if type(r) == "number" then return r, g, b, 1 end
+      c = C.hostile
     end
   end
   return c.r, c.g, c.b, c.a or 1
 end
 
+-- Tank = tank aura, else Warrior Defensive Stance / Druid Bear (ThreatPlates Nameplate.lua:2354-2420). Cached.
+local function IsTankAuto()
+  if autoTank == nil then
+    local tank = false
+    if UnitHasEffectivelyTankAura then
+      local v = UnitHasEffectivelyTankAura("player")
+      tank = not issecretvalue(v) and v == true
+    end
+    if not tank and GetShapeshiftFormID then
+      local _, class = UnitClass("player")
+      local form = GetShapeshiftFormID()
+      if not issecretvalue(form) and form then
+        if class == "WARRIOR" then tank = form == 18
+        elseif class == "DRUID" then tank = form == 5 or form == 8 end
+      end
+    end
+    autoTank = tank
+  end
+  return autoTank
+end
+
+-- r, g, b, a for hostile/neutral NPCs in combat, or nothing (secret, no threat table, out of combat).
+local function ThreatColor(pf)
+  local T = ns.P.threat
+  if not (T.enabled and THREAT_CATS[pf.category]) then return end
+  local unit = pf.unit
+  local fighting = UnitAffectingCombat(unit)
+  if issecretvalue(fighting) or not fighting then return end
+  local status = UnitThreatSituation("player", unit)
+  if issecretvalue(status) or type(status) ~= "number" then return end
+  local role = T.role
+  if role == "auto" then role = IsTankAuto() and "tank" or "dps" end
+  local c
+  if role == "tank" then
+    c = (status >= 3 and T.tankSecure) or (status == 2 and T.tankInsecure) or T.tankLost
+  else
+    c = (status >= 2 and T.dpsAggro) or (status == 1 and T.dpsHigh) or T.dpsLow
+  end
+  return c.r, c.g, c.b, c.a or 1
+end
+
+-- Colour object for the health fill below the execute threshold, else nothing. Step curve on the health percent
+-- (ThreatPlates Modules/Color.lua:70,212; StatusText.lua:50-54); a secret base colour cannot go into a curve.
+local function ExecuteColor(pf, r, g, b, a)
+  local E = ns.P.execute
+  if not (E.enabled and EXECUTE_CATS[pf.category] and UnitHealthPercent
+    and C_CurveUtil and C_CurveUtil.CreateColorCurve and Enum.LuaCurveType) then return end
+  if issecretvalue(r) or issecretvalue(g) or issecretvalue(b) then return end
+  local key = r .. ":" .. g .. ":" .. b .. ":" .. a
+  local curve = curveCache[key]
+  if not curve then
+    curve = C_CurveUtil.CreateColorCurve()
+    curve:SetType(Enum.LuaCurveType.Step)
+    local e = E.color
+    curve:AddPoint(0, CreateColor(e.r, e.g, e.b, e.a or 1))
+    curve:AddPoint(E.threshold / 100, CreateColor(r, g, b, a))
+    curveCache[key] = curve
+  end
+  return UnitHealthPercent(pf.unit, true, curve)
+end
+
 local function UpdateColor(pf)
-  local r, g, b, a = UnitColor(pf)
+  local r, g, b, a, tapped = UnitColor(pf)
+  local exec
+  if not tapped then
+    local tr, tg, tb, ta = ThreatColor(pf)
+    if tr then r, g, b, a = tr, tg, tb, ta end
+    exec = ExecuteColor(pf, r, g, b, a)
+  end
   -- Texture vertex color instead of SetStatusBarColor: ThreatPlates Healthbar.lua:344-348 on Midnight-API clients.
-  pf.health:GetStatusBarTexture():SetVertexColor(r, g, b, a)
-  pf.name:SetTextColor(r, g, b, 1)
+  local tex = pf.health:GetStatusBarTexture()
+  if exec then tex:SetVertexColor(exec.r, exec.g, exec.b, exec.a) else tex:SetVertexColor(r, g, b, a) end
+  pf.name:SetTextColor(r, g, b, 1) -- the name never takes the execute colour
 end
 
 local function UpdateFlags(pf)
@@ -320,13 +446,25 @@ local function UpdateFlags(pf)
   local name, bar, power
   if cat then
     name, bar, power = cat.name, cat.bar, cat.power
+    pf.showCast, pf.showAuras = cat.cast ~= false, cat.auras ~= false
   else
     name, bar, power = true, true, false -- fail-safe: category unknown, show name and bar
+    pf.showCast, pf.showAuras = true, true
   end
   if pf.isQuest and P.quest.override then name, bar = true, true end
+  -- Out of combat only the bars go; names, casts and auras stay. Wins over the quest override.
+  if cat and cat.combatOnly and not ns.inCombat then bar, power = false, false end
   pf.showName = name
   pf.showBar = bar and not ns.barsHidden
   pf.showPower = power and not ns.barsHidden
+end
+
+-- Runs every element's update hook (the editor calls it on its preview plate).
+function ns.UpdateElements(pf)
+  for i = 1, #elements do
+    local update = elements[i].update
+    if update then update(pf) end
+  end
 end
 
 function ns.UpdatePlateData(pf)
@@ -337,10 +475,7 @@ function ns.UpdatePlateData(pf)
   UpdatePower(pf)
   UpdateColor(pf)
   ns.ApplyVisibility(pf)
-  for i = 1, #elements do
-    local update = elements[i].update
-    if update then update(pf) end
-  end
+  ns.UpdateElements(pf)
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -414,6 +549,8 @@ local function RemovePlate(unit)
   end
   ns.plates[unit] = nil
   pf.unit, pf.category, pf.isQuest = nil, nil, false
+  pf.absorbWanted = false
+  pf.absorb:Hide()
   pf.root:Hide()
 
   local uf, plate = pf.ufr, pf.plate
@@ -467,6 +604,8 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function ns.RefreshPlates()
+  wipe(curveCache)
+  autoTank = nil
   styleVersion = styleVersion + 1 -- pooled plates without a unit restyle when they are next used
   for _, pf in pairs(ns.plates) do
     ns.StylePlate(pf)
@@ -530,8 +669,18 @@ end
 
 coreHandlers.NAME_PLATE_UNIT_ADDED = AddPlate
 coreHandlers.NAME_PLATE_UNIT_REMOVED = RemovePlate
-coreHandlers.UNIT_HEALTH = ForUnit(UpdateHealth)
+coreHandlers.UNIT_HEALTH = ForUnit(function(pf)
+  UpdateHealth(pf)
+  if ns.P.execute.enabled then UpdateColor(pf) end
+  UpdateAbsorbs(pf)
+end)
 coreHandlers.UNIT_MAXHEALTH = coreHandlers.UNIT_HEALTH
+coreHandlers.UNIT_ABSORB_AMOUNT_CHANGED = ForUnit(UpdateAbsorbs)
+coreHandlers.UNIT_THREAT_SITUATION_UPDATE = ForUnit(UpdateColor)
+coreHandlers.UNIT_THREAT_LIST_UPDATE = coreHandlers.UNIT_THREAT_SITUATION_UPDATE
+coreHandlers.UNIT_FLAGS = ForUnit(function(pf) -- combat state of the unit
+  if ns.P.threat.enabled then UpdateColor(pf) end
+end)
 coreHandlers.UNIT_NAME_UPDATE = ForUnit(UpdateName)
 coreHandlers.UNIT_FACTION = ForUnit(function(pf)
   ns.UpdateCategory(pf)
@@ -551,7 +700,20 @@ coreHandlers.QUEST_LOG_UPDATE = QueueQuestRefresh
 coreHandlers.UNIT_QUEST_LOG_CHANGED = function(unit)
   if unit == "player" then QueueQuestRefresh() end
 end
+
+local function SetPlayerCombat(state)
+  ns.inCombat = state
+  autoTank = nil
+  ns.RefreshVisibility()
+  for _, pf in pairs(ns.plates) do UpdateColor(pf) end
+end
+coreHandlers.PLAYER_REGEN_DISABLED = function() SetPlayerCombat(true) end
+coreHandlers.UPDATE_SHAPESHIFT_FORM = function()
+  autoTank = nil
+  for _, pf in pairs(ns.plates) do UpdateColor(pf) end
+end
 coreHandlers.PLAYER_REGEN_ENABLED = function()
+  SetPlayerCombat(false)
   if questPending then
     questPending = false
     QueueQuestRefresh()
@@ -571,6 +733,7 @@ end)
 
 -- Called once from Core's OnEnable (PLAYER_LOGIN), when Blizzard's nameplate driver exists.
 function ns.EnablePlates()
+  ns.inCombat = InCombatLockdown() and true or false
   for event in pairs(coreHandlers) do
     -- RegisterEvent throws on event names this client lacks (PLAYER_GUILD_UPDATE is not confirmed on Forever).
     pcall(ev.RegisterEvent, ev, event)

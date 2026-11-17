@@ -16,6 +16,10 @@ local ELEMENTS = {
   { key = "combo",      region = "combo",      label = "Combo points" },
   { key = "raidMarker", region = "raidMarker", label = "Raid marker" },
   { key = "quest",      region = "questIcon",  label = "Quest icon" },
+  { key = "castBar",        region = "castBar",   label = "Cast bar" },
+  { key = "auras",          region = "auras",     label = "Auras" },
+  { key = "classification", region = "classIcon", label = "Elite icon" },
+  { key = "level",          region = "levelText", label = "Level" },
 }
 
 local win, pf
@@ -50,11 +54,13 @@ end
 function ns.RefreshEditor()
   if not win or not win:IsShown() then return end
   pf.showName, pf.showBar, pf.showPower, pf.hasPower = true, true, true, true
+  pf.showCast, pf.showAuras = true, true
   ns.StylePlate(pf)
   ns.ApplyVisibility(pf)
   FillSample()
+  if ns.UpdateElements then ns.UpdateElements(pf) end
   for _, e in ipairs(ELEMENTS) do
-    e.handle:SetShown(pf[e.region]:IsShown())
+    if e.handle then e.handle:SetShown(pf[e.region]:IsShown()) end
   end
 end
 
@@ -172,7 +178,10 @@ local function Build()
   pf.isPreview = true
   pf.root:SetPoint("CENTER", stage, "CENTER")
 
-  for _, e in ipairs(ELEMENTS) do MakeHandle(e) end
+  -- An element that is unsupported on this client may not create its region; it gets no handle.
+  for _, e in ipairs(ELEMENTS) do
+    if pf[e.region] then MakeHandle(e) end
+  end
   win:SetScript("OnShow", ns.RefreshEditor)
 end
 

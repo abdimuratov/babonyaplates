@@ -10,6 +10,12 @@ A nameplate addon for WoW Forever (Interface 16001): choose per unit type whethe
 - HP text as percent, value or both, with optional max
 - Colors, class colors, textures, borders and fonts (LibSharedMedia)
 - Combo points on your target, raid markers, target highlight
+- Cast bars (shield colour for uninterruptible casts), shown per unit type even on name-only plates
+- Auras: all debuffs, with your own debuffs and purgeable enemy buffs larger and outlined
+- Threat colours (tank or DPS, auto-detected from stance/form), execute colour below a health threshold, absorb shields
+- Elite / rare / boss icon and difficulty-coloured level
+- "Bars only in combat" per unit type
+- Profile import / export strings
 - Layout editor with drag and drop (`/bpt edit`), profiles
 
 ## Installation
@@ -26,4 +32,4 @@ A nameplate addon for WoW Forever (Interface 16001): choose per unit type whethe
 
 ## Libraries
 
-Embedded in `Libs/`, each under its own license: Ace3 (see `Libs/Ace3-LICENSE.txt`), LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets.
+Embedded in `Libs/`, each under its own license: Ace3 incl. AceSerializer (see `Libs/Ace3-LICENSE.txt`), LibSharedMedia-3.0, AceGUI-3.0-SharedMediaWidgets.

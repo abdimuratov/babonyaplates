@@ -87,6 +87,8 @@ local OUTLINES = { NONE = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick out
 local OUTLINE_ORDER = { "NONE", "OUTLINE", "THICKOUTLINE" }
 local HP_MODES = { none = "None", percent = "Percent", value = "Value", both = "Value and percent" }
 local HP_ORDER = { "none", "percent", "value", "both" }
+local THREAT_ROLES = { auto = "Auto", tank = "Tank", dps = "DPS & healer" }
+local THREAT_ROLE_ORDER = { "auto", "tank", "dps" }
 
 -- The one position helper: inline group with both anchor points and X/Y offsets for profile path `arg`.
 local function Pos(arg)
@@ -128,6 +130,9 @@ local function Visibility()
       { "name", Toggle("Show name", "categories." .. key .. ".name") },
       { "bar", Toggle("Show health bar", "categories." .. key .. ".bar") },
       { "power", Toggle("Show power bar", "categories." .. key .. ".power") },
+      { "cast", Toggle("Show cast bar", "categories." .. key .. ".cast") },
+      { "auras", Toggle("Show auras", "categories." .. key .. ".auras") },
+      { "combatOnly", Toggle("Bars only in combat", "categories." .. key .. ".combatOnly", "Hides health and power bars while you are out of combat. Names stay.") },
     }, { inline = true }) }
   end
   list[#list + 1] = { "quest", Group("Quest mobs", {
@@ -186,12 +191,31 @@ local function Build()
       { "friendly", Color("Friendly", "colors.friendly", true) },
       { "tapped", Color("Tapped", "colors.tapped", true) },
       { "background", Color("Bar background", "colors.background", true) },
-    }), { "colors" } },
+      { "threat", Group("Threat", {
+        { "enabled", Toggle("Enabled", "threat.enabled", "Colors the bars of hostile and neutral NPCs that are in combat by your threat.") },
+        { "role", Select("Role", "threat.role", THREAT_ROLES, THREAT_ROLE_ORDER) },
+        { "tankSecure", Color("Tank: secure", "threat.tankSecure", true) },
+        { "tankInsecure", Color("Tank: insecure", "threat.tankInsecure", true) },
+        { "tankLost", Color("Tank: lost", "threat.tankLost", true) },
+        { "dpsLow", Color("DPS: low threat", "threat.dpsLow", true) },
+        { "dpsHigh", Color("DPS: high threat", "threat.dpsHigh", true) },
+        { "dpsAggro", Color("DPS: has aggro", "threat.dpsAggro", true) },
+      }, { inline = true }) },
+      { "execute", Group("Execute", {
+        { "enabled", Toggle("Enabled", "execute.enabled", "Colors the bars of attackable units below the threshold. Tapped units keep the tapped color.") },
+        { "threshold", Range("Threshold", "execute.threshold", 1, 50, 1, { desc = "Health percent below which the color applies." }) },
+        { "color", Color("Color", "execute.color", true) },
+      }, { inline = true }) },
+    }), { "colors", "threat", "execute" } },
     { "bar", Group("Health bar", {
       { "width", Range("Width", "bar.width", 20, 400, 1) },
       { "height", Range("Height", "bar.height", 2, 60, 1) },
       { "scale", Range("Scale", "bar.scale", 0.5, 3, 0.05, { isPercent = true }) },
       { "texture", Media("Texture", "bar.texture", "statusbar") },
+      { "absorbs", Group("Absorbs", {
+        { "enabled", Toggle("Enabled", "absorbs.enabled", "Shows damage absorb shields on the bar.") },
+        { "color", Color("Color", "absorbs.color", true) },
+      }, { inline = true }) },
       { "border", Group("Border", {
         { "enabled", Toggle("Enabled", "bar.border.enabled") },
         { "texture", Media("Texture", "bar.border.texture", "border") },
@@ -199,7 +223,7 @@ local function Build()
         { "radius", Range("Corner radius", "bar.border.radius", 0, 12, 1, { desc = "0 = square corners. Rounds the bar, its background and the border (which then replaces the border texture)." }) },
         { "color", Color("Color", "bar.border.color", true) },
       }, { inline = true }) },
-    }), { "bar" } },
+    }), { "bar", "absorbs" } },
     { "name", TextGroup("Name", "name"), { "name" } },
     { "hpText", TextGroup("HP text", "hpText", {
       { "mode", Select("Display", "hpText.mode", HP_MODES, HP_ORDER) },
@@ -240,6 +264,15 @@ local function Build()
     s[2].order = i
     s[2].args.reset = ResetButton(s[3])
     options.args[s[1]] = s[2]
+  end
+  -- Tabs registered by element files via ns.RegisterOptions (Core.lua).
+  local O = { Toggle = Toggle, Range = Range, Select = Select, Color = Color, Media = Media, Group = Group,
+              Pos = Pos, TextGroup = TextGroup, Get = Get, Set = Set }
+  for _, s in ipairs(ns.optionSections) do
+    local g = s.build(O)
+    g.order = s.order
+    if s.reset then g.args.reset = ResetButton(s.reset) end
+    options.args[s.key] = g
   end
 
   -- Hide each game setting whose CVar is missing on this client (names match ns.ApplyCVars in Core.lua).
