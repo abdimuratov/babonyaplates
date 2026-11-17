@@ -6,4 +6,7 @@
 ## SavedVariables: BabonyaPlatesDB
 
 embeds.xml
+Defaults.lua
 Core.lua
+Classify.lua
+Plate.lua

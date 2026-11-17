@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="BABONYAPLATES_TOGGLE" header="BABONYAPLATES" category="ADDONS">
+		BabonyaPlates_ToggleBars()
+	</Binding>
+</Bindings>
