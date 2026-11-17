@@ -132,16 +132,27 @@ function ns.StylePlate(pf)
   pf.root:SetScale(b.scale)
   pf.root:SetSize(b.width, b.height)
 
+  local bd = b.border
+  local radius = ns.RoundedRadius(bd.radius, b.width, b.height) -- 0 = square, the original drawing below
+
   pf.health:SetAllPoints(pf.root)
   pf.health:SetStatusBarTexture(ns.Fetch("statusbar", b.texture))
-  pf.bg:SetColorTexture(c.background.r, c.background.g, c.background.b, c.background.a)
+  if ns.RoundedFill(pf.bg, radius) then
+    pf.bg:SetVertexColor(c.background.r, c.background.g, c.background.b, c.background.a)
+  else
+    pf.bg:SetColorTexture(c.background.r, c.background.g, c.background.b, c.background.a)
+  end
+  ns.RoundedMask(pf.health, pf.health:GetStatusBarTexture(), radius)
 
-  local bd = b.border
   if bd.enabled then
     local size = bd.size
-    -- A fresh table every time: SetBackdrop ignores the table it already has applied.
-    pf.border:SetBackdrop({ edgeFile = ns.Fetch("border", bd.texture), edgeSize = size })
-    pf.border:SetBackdropBorderColor(bd.color.r, bd.color.g, bd.color.b, bd.color.a)
+    if radius > 0 then
+      pf.border:SetBackdrop(nil) -- the rounded rings replace the LSM border
+    else
+      -- A fresh table every time: SetBackdrop ignores the table it already has applied.
+      pf.border:SetBackdrop({ edgeFile = ns.Fetch("border", bd.texture), edgeSize = size })
+      pf.border:SetBackdropBorderColor(bd.color.r, bd.color.g, bd.color.b, bd.color.a)
+    end
     pf.border:ClearAllPoints()
     pf.border:SetPoint("TOPLEFT", pf.health, "TOPLEFT", -size, size)
     pf.border:SetPoint("BOTTOMRIGHT", pf.health, "BOTTOMRIGHT", size, -size)
@@ -149,6 +160,7 @@ function ns.StylePlate(pf)
   else
     pf.border:Hide()
   end
+  ns.RoundedBorder(pf.border, pf.health, radius, bd.enabled and bd.size or 0, bd.color)
 
   SetFont(pf.name, P.name)
   ns.ApplyPos(pf.name, pf.health, P.name.pos)

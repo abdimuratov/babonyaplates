@@ -12,6 +12,7 @@ local isComboClass = class == "ROGUE" or class == "DRUID"
 local function Layout(pf, max)
   local c = ns.P.combo
   local f = pf.combo
+  local radius = ns.RoundedRadius(c.radius, c.width, c.height)
   pf.comboMax = max
   for i = 1, max do
     local t = f.points[i]
@@ -19,14 +20,14 @@ local function Layout(pf, max)
       t = f:CreateTexture(nil, "ARTWORK")
       f.points[i] = t
     end
-    t:SetTexture(ns.Fetch("statusbar", c.texture))
-    t:SetSize(c.size, c.size)
+    if not ns.RoundedFill(t, radius) then t:SetTexture(ns.Fetch("statusbar", c.texture)) end
+    t:SetSize(c.width, c.height)
     t:ClearAllPoints()
-    t:SetPoint("LEFT", f, "LEFT", (i - 1) * (c.size + c.spacing), 0)
+    t:SetPoint("LEFT", f, "LEFT", (i - 1) * (c.width + c.spacing), 0)
     t:Show()
   end
   for i = max + 1, #f.points do f.points[i]:Hide() end
-  f:SetSize(math.max(1, max * c.size + (max - 1) * c.spacing), c.size)
+  f:SetSize(math.max(1, max * c.width + (max - 1) * c.spacing), c.height)
 end
 
 local function Update(pf, tp)

@@ -141,9 +141,24 @@ end
 
 local function CVarGroup()
   return Group("Game settings", {
-    { "stacking", Toggle("Stack nameplates", "cvars.stacking", "Keep overlapping nameplates apart.") },
+    { "stackEnemy", Toggle("Stack enemy nameplates", "cvars.stackEnemy", "Keep overlapping enemy nameplates apart.") },
+    { "stackFriendly", Toggle("Stack friendly nameplates", "cvars.stackFriendly", "Keep overlapping friendly nameplates apart. Friendly plates are name-only by default.") },
     { "maxDistance", Range("Max distance", "cvars.maxDistance", 10, 100, 1) },
   })
+end
+
+-- One "Reset this tab" button for every tab: copies the defaults of the profile keys the tab edits.
+-- The key stays a table (AceDB sub-tables must exist) and the copy is deep, so defaults are never aliased.
+local function ResetButton(keys)
+  return {
+    type = "execute", name = "Reset this tab", order = 1000,
+    confirm = true, confirmText = "Reset this tab to its default settings?",
+    func = function()
+      for _, key in ipairs(keys) do ns.P[key] = CopyTable(ns.defaults.profile[key]) end
+      ns.RefreshAll()
+      AceConfigRegistry:NotifyChange("BabonyaPlates")
+    end,
+  }
 end
 
 local built, options
@@ -165,7 +180,7 @@ local function Build()
     },
   }
   local sections = {
-    { "visibility", Visibility() },
+    { "visibility", Visibility(), { "categories", "quest" } },
     { "colors", Group("Colors", {
       { "classColors", Toggle("Class colors for players", "colors.classColors") },
       { "hostile", Color("Hostile", "colors.hostile", true) },
@@ -173,7 +188,7 @@ local function Build()
       { "friendly", Color("Friendly", "colors.friendly", true) },
       { "tapped", Color("Tapped", "colors.tapped", true) },
       { "background", Color("Bar background", "colors.background", true) },
-    }) },
+    }), { "colors" } },
     { "bar", Group("Health bar", {
       { "width", Range("Width", "bar.width", 20, 400, 1) },
       { "height", Range("Height", "bar.height", 2, 60, 1) },
@@ -183,33 +198,36 @@ local function Build()
         { "enabled", Toggle("Enabled", "bar.border.enabled") },
         { "texture", Media("Texture", "bar.border.texture", "border") },
         { "size", Range("Size", "bar.border.size", 1, 16, 1) },
+        { "radius", Range("Corner radius", "bar.border.radius", 0, 12, 1, { desc = "0 = square corners. Rounds the bar, its background and the border (which then replaces the border texture)." }) },
         { "color", Color("Color", "bar.border.color", true) },
       }, { inline = true }) },
-    }) },
-    { "name", TextGroup("Name", "name") },
+    }), { "bar" } },
+    { "name", TextGroup("Name", "name"), { "name" } },
     { "hpText", TextGroup("HP text", "hpText", {
       { "mode", Select("Display", "hpText.mode", HP_MODES, HP_ORDER) },
       { "showMax", Toggle("Show max health", "hpText.showMax", "Show current / max.") },
-    }) },
+    }), { "hpText" } },
     { "power", Group("Power bar", {
       { "height", Range("Height", "power.height", 1, 30, 1) },
       { "pos", Pos("power.pos") },
-    }) },
+    }), { "power" } },
     { "combo", Group("Combo points", {
       { "enabled", Toggle("Enabled", "combo.enabled") },
       { "hideWhenZero", Toggle("Hide when zero", "combo.hideWhenZero") },
-      { "size", Range("Size", "combo.size", 4, 32, 1) },
+      { "width", Range("Width", "combo.width", 2, 40, 1) },
+      { "height", Range("Height", "combo.height", 2, 40, 1) },
+      { "radius", Range("Corner radius", "combo.radius", 0, 20, 1, { desc = "0 = square. Half the smaller side or more gives circles." }) },
       { "spacing", Range("Spacing", "combo.spacing", 0, 20, 1) },
       { "texture", Media("Texture", "combo.texture", "statusbar") },
       { "filled", Color("Filled color", "combo.filled", true) },
       { "empty", Color("Empty color", "combo.empty", true) },
       { "pos", Pos("combo.pos") },
-    }) },
+    }), { "combo" } },
     { "raidMarker", Group("Raid marker", {
       { "enabled", Toggle("Enabled", "raidMarker.enabled") },
       { "size", Range("Size", "raidMarker.size", 8, 64, 1) },
       { "pos", Pos("raidMarker.pos") },
-    }) },
+    }), { "raidMarker" } },
     { "highlight", Group("Target highlight", {
       { "scaleEnabled", Toggle("Enlarge target", "highlight.scaleEnabled") },
       { "scale", Range("Target scale", "highlight.scale", 1, 2, 0.05, { isPercent = true }) },
@@ -217,17 +235,19 @@ local function Build()
       { "borderColor", Color("Border color", "highlight.borderColor", true) },
       { "fadeEnabled", Toggle("Fade other plates", "highlight.fadeEnabled") },
       { "fadeAlpha", Range("Faded opacity", "highlight.fadeAlpha", 0, 1, 0.05, { isPercent = true }) },
-    }) },
-    { "cvars", CVarGroup() },
+    }), { "highlight" } },
+    { "cvars", CVarGroup(), { "cvars" } },
   }
   for i, s in ipairs(sections) do
     s[2].order = i
+    s[2].args.reset = ResetButton(s[3])
     options.args[s[1]] = s[2]
   end
 
   -- Hide each game setting whose CVar is missing on this client (names match ns.ApplyCVars in Core.lua).
   local g = options.args.cvars.args
-  g.stacking.hidden = function() return not ns.CVarExists("nameplateStackingTypes") end
+  g.stackEnemy.hidden = function() return not ns.CVarExists("nameplateStackingTypes") end
+  g.stackFriendly.hidden = g.stackEnemy.hidden
   g.maxDistance.hidden = function() return not ns.CVarExists("nameplateMaxDistance") end
 
   options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(ns.db)

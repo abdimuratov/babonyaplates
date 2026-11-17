@@ -100,9 +100,8 @@ function ns.ApplyCVars()
   -- nameplateStackingTypes is a bitfield indexed by Enum.NamePlateStackType (replaces nameplateMotion);
   -- bitfield CVars are only accessible via C_CVar.Get/SetCVarBitfield (see ThreatPlates Options.lua:671-681).
   if Enum.NamePlateStackType and ns.CVarExists("nameplateStackingTypes") then
-    local want = P.cvars.stacking and true or false
-    for _, key in ipairs({ "Enemy", "Friendly" }) do
-      local index = Enum.NamePlateStackType[key]
+    for key, opt in pairs({ Enemy = "stackEnemy", Friendly = "stackFriendly" }) do
+      local index, want = Enum.NamePlateStackType[key], P.cvars[opt] and true or false
       if index ~= nil and (C_CVar.GetCVarBitfield("nameplateStackingTypes", index) or false) ~= want then
         C_CVar.SetCVarBitfield("nameplateStackingTypes", index, want)
       end
@@ -138,8 +137,20 @@ end
 
 local CONFLICTS = { "TidyPlates_ThreatPlates", "Plater", "Kui_Nameplates", "Platynator" }
 
+-- Old saved keys: cvars.stacking became stackEnemy + stackFriendly, combo.size became width + height.
+local function Migrate()
+  local c, cv = ns.P.combo, ns.P.cvars
+  if c.size ~= nil then
+    c.width, c.height, c.size = c.size, c.size, nil
+  end
+  if cv.stacking ~= nil then
+    cv.stackEnemy, cv.stackFriendly, cv.stacking = cv.stacking, cv.stacking, nil
+  end
+end
+
 local function OnProfileChanged()
   ns.P = ns.db.profile
+  Migrate()
   ns.RefreshAll()
 end
 
@@ -147,6 +158,7 @@ function addon:OnInitialize()
   -- true = one shared "Default" profile for all characters.
   ns.db = LibStub("AceDB-3.0"):New("BabonyaPlatesDB", ns.defaults, true)
   ns.P = ns.db.profile
+  Migrate()
   ns.db.RegisterCallback(ns, "OnProfileChanged", OnProfileChanged)
   ns.db.RegisterCallback(ns, "OnProfileCopied", OnProfileChanged)
   ns.db.RegisterCallback(ns, "OnProfileReset", OnProfileChanged)
