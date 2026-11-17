@@ -39,6 +39,7 @@ ns.defaults = {
       scaleEnabled = true, scale = 1.2, borderEnabled = true, borderColor = { r = 1, g = 1, b = 1, a = 1 },
       fadeEnabled = true, fadeAlpha = 0.6,
     },
-    cvars = { stackEnemy = true, stackFriendly = false, maxDistance = 45 },
+    cvars = { maxDistance = 45 },
+    stacking = { nameOnly = true, withBars = false }, -- own stacker (Elements/Stacking.lua); engine stacking is forced off
   },
 }

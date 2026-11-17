@@ -15,18 +15,23 @@ local function Layout(pf, max)
   local radius = ns.RoundedRadius(c.radius, c.width, c.height)
   pf.comboMax = max
   for i = 1, max do
-    local t = f.points[i]
-    if not t then
-      t = f:CreateTexture(nil, "ARTWORK")
-      f.points[i] = t
+    -- One small frame per point: it hosts the rounded mask that clips the textured fill (same helper as the health fill).
+    local cell = f.cells[i]
+    if not cell then
+      cell = CreateFrame("Frame", nil, f)
+      cell:EnableMouse(false)
+      local t = cell:CreateTexture(nil, "ARTWORK")
+      t:SetAllPoints(cell)
+      f.cells[i], f.points[i] = cell, t
     end
-    if not ns.RoundedFill(t, radius) then t:SetTexture(ns.Fetch("statusbar", c.texture)) end
-    t:SetSize(c.width, c.height)
-    t:ClearAllPoints()
-    t:SetPoint("LEFT", f, "LEFT", (i - 1) * (c.width + c.spacing), 0)
-    t:Show()
+    f.points[i]:SetTexture(ns.Fetch("statusbar", c.texture))
+    ns.RoundedMask(cell, f.points[i], radius)
+    cell:SetSize(c.width, c.height)
+    cell:ClearAllPoints()
+    cell:SetPoint("LEFT", f, "LEFT", (i - 1) * (c.width + c.spacing), 0)
+    cell:Show()
   end
-  for i = max + 1, #f.points do f.points[i]:Hide() end
+  for i = max + 1, #f.cells do f.cells[i]:Hide() end
   f:SetSize(math.max(1, max * c.width + (max - 1) * c.spacing), c.height)
 end
 
@@ -63,7 +68,7 @@ ns.RegisterElement{
   create = function(pf)
     pf.combo = CreateFrame("Frame", nil, pf.root)
     pf.combo:EnableMouse(false)
-    pf.combo.points = {}
+    pf.combo.points, pf.combo.cells = {}, {}
     pf.combo:Hide()
   end,
   style = function(pf)

@@ -141,8 +141,8 @@ end
 
 local function CVarGroup()
   return Group("Game settings", {
-    { "stackEnemy", Toggle("Stack enemy nameplates", "cvars.stackEnemy", "Keep overlapping enemy nameplates apart.") },
-    { "stackFriendly", Toggle("Stack friendly nameplates", "cvars.stackFriendly", "Keep overlapping friendly nameplates apart. Friendly plates are name-only by default.") },
+    { "stackNameOnly", Toggle("Stack name-only plates", "stacking.nameOnly", "Push plates that show only a name apart vertically so the names do not overlap.") },
+    { "stackWithBars", Toggle("Stack plates with health/power bars", "stacking.withBars", "Push plates that show a health or power bar apart vertically so the bars do not overlap.") },
     { "maxDistance", Range("Max distance", "cvars.maxDistance", 10, 100, 1) },
   })
 end
@@ -236,7 +236,7 @@ local function Build()
       { "fadeEnabled", Toggle("Fade other plates", "highlight.fadeEnabled") },
       { "fadeAlpha", Range("Faded opacity", "highlight.fadeAlpha", 0, 1, 0.05, { isPercent = true }) },
     }), { "highlight" } },
-    { "cvars", CVarGroup(), { "cvars" } },
+    { "cvars", CVarGroup(), { "cvars", "stacking" } },
   }
   for i, s in ipairs(sections) do
     s[2].order = i
@@ -246,8 +246,6 @@ local function Build()
 
   -- Hide each game setting whose CVar is missing on this client (names match ns.ApplyCVars in Core.lua).
   local g = options.args.cvars.args
-  g.stackEnemy.hidden = function() return not ns.CVarExists("nameplateStackingTypes") end
-  g.stackFriendly.hidden = g.stackEnemy.hidden
   g.maxDistance.hidden = function() return not ns.CVarExists("nameplateMaxDistance") end
 
   options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(ns.db)

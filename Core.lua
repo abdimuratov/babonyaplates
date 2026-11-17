@@ -99,11 +99,11 @@ function ns.ApplyCVars()
 
   -- nameplateStackingTypes is a bitfield indexed by Enum.NamePlateStackType (replaces nameplateMotion);
   -- bitfield CVars are only accessible via C_CVar.Get/SetCVarBitfield (see ThreatPlates Options.lua:671-681).
+  -- Both flags stay off: Elements/Stacking.lua does the stacking (the engine cannot tell name-only plates from bar plates).
   if Enum.NamePlateStackType and ns.CVarExists("nameplateStackingTypes") then
-    for key, opt in pairs({ Enemy = "stackEnemy", Friendly = "stackFriendly" }) do
-      local index, want = Enum.NamePlateStackType[key], P.cvars[opt] and true or false
-      if index ~= nil and (C_CVar.GetCVarBitfield("nameplateStackingTypes", index) or false) ~= want then
-        C_CVar.SetCVarBitfield("nameplateStackingTypes", index, want)
+    for _, index in pairs(Enum.NamePlateStackType) do
+      if C_CVar.GetCVarBitfield("nameplateStackingTypes", index) then
+        C_CVar.SetCVarBitfield("nameplateStackingTypes", index, false)
       end
     end
   end
@@ -137,15 +137,13 @@ end
 
 local CONFLICTS = { "TidyPlates_ThreatPlates", "Plater", "Kui_Nameplates", "Platynator" }
 
--- Old saved keys: cvars.stacking became stackEnemy + stackFriendly, combo.size became width + height.
+-- Old saved keys: combo.size became width + height; cvars.stacking / stackEnemy / stackFriendly are gone (see ns.P.stacking).
 local function Migrate()
   local c, cv = ns.P.combo, ns.P.cvars
   if c.size ~= nil then
     c.width, c.height, c.size = c.size, c.size, nil
   end
-  if cv.stacking ~= nil then
-    cv.stackEnemy, cv.stackFriendly, cv.stacking = cv.stacking, cv.stacking, nil
-  end
+  cv.stacking, cv.stackEnemy, cv.stackFriendly = nil, nil, nil
 end
 
 local function OnProfileChanged()
