@@ -10,3 +10,4 @@ Defaults.lua
 Core.lua
 Classify.lua
 Plate.lua
+Options.lua
