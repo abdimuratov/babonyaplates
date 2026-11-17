@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: BabonyaPlates
+## Notes: Configurable nameplates: per-category names and bars, custom styling.
+## Author: abdimuratov
+## Version: 0.1.0
+## SavedVariables: BabonyaPlatesDB
+
+embeds.xml
+Core.lua
