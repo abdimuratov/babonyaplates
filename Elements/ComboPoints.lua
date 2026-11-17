@@ -29,19 +29,15 @@ local function Layout(pf, max)
   f:SetSize(math.max(1, max * c.size + (max - 1) * c.spacing), c.size)
 end
 
-local function IsTarget(pf)
-  local tp = GetNamePlateForUnit("target")
-  return tp ~= nil and tp == pf.plate
-end
-
-local function Update(pf)
+local function Update(pf, tp)
   local f = pf.combo
   if not f then return end
+  if tp == nil then tp = GetNamePlateForUnit("target") end -- UpdateAll passes it once for all plates
   local c = ns.P.combo
   local points, max
   if pf.isPreview then
     points, max = PREVIEW_POINTS, PREVIEW_MAX
-  elseif isComboClass and c.enabled and pf.unit and pf.showBar and IsTarget(pf) then
+  elseif isComboClass and c.enabled and pf.unit and pf.showBar and tp ~= nil and tp == pf.plate then
     max, points = UnitPowerMax("player", COMBO), UnitPower("player", COMBO)
     if issecretvalue(max) or issecretvalue(points) then max, points = nil, nil end
   end
@@ -58,7 +54,8 @@ local function Update(pf)
 end
 
 local function UpdateAll()
-  for _, pf in pairs(ns.plates) do Update(pf) end
+  local tp = GetNamePlateForUnit("target")
+  for _, pf in pairs(ns.plates) do Update(pf, tp) end
 end
 
 ns.RegisterElement{
@@ -85,7 +82,7 @@ ns.RegisterElement{
       UpdateAll()
     end,
     UPDATE_SHAPESHIFT_FORM = UpdateAll,
-    UNIT_POWER_UPDATE = function(_, unit) if unit == "player" then UpdateAll() end end,
+    UNIT_POWER_UPDATE = function(_, unit, powerType) if unit == "player" and (powerType == "COMBO_POINTS" or powerType == nil) then UpdateAll() end end,
     UNIT_DISPLAYPOWER = function(_, unit) if unit == "player" then UpdateAll() end end,
   },
 }

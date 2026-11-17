@@ -8,7 +8,9 @@ local function Apply(pf, active, hasTarget)
   local P = ns.P
   local h, bd = P.highlight, P.bar.border
   local on = active and h.scaleEnabled
-  pf.root:SetScale(P.bar.scale * (on and h.scale or 1))
+  local s = P.bar.scale * (on and h.scale or 1)
+  pf.root:SetScale(s)
+  if pf.hit then pf.hit:SetSize(P.bar.width * s, P.bar.height * s + 20) end
   pf.root:SetAlpha((hasTarget and not active and h.fadeEnabled) and h.fadeAlpha or 1)
   local col = (active and h.borderEnabled) and h.borderColor or bd.color
   pf.border:SetBackdropBorderColor(col.r, col.g, col.b, col.a)

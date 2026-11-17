@@ -171,11 +171,23 @@ function ns.StylePlate(pf)
   end
 end
 
+-- Clickable area follows our bar, or is removed when nothing is drawn (ThreatPlates ApplyPlateHitTest, Nameplate.lua:1140).
+function ns.ApplyHitTest(pf)
+  local plate = pf.plate
+  if not (plate and pf.hit and plate.CanChangeHitTestPoints and plate:CanChangeHitTestPoints()) then return end
+  if pf.showName or pf.showBar then
+    plate:SetAllHitTestPoints(pf.hit)
+  else
+    plate:ClearAllHitTestPoints()
+  end
+end
+
 -- Shows/hides our regions from pf.showName / showBar / showPower. The editor sets those flags itself.
 function ns.ApplyVisibility(pf)
   pf.health:SetShown(pf.showBar)
   pf.name:SetShown(pf.showName)
   pf.power:SetShown(pf.showPower and pf.hasPower)
+  ns.ApplyHitTest(pf)
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -345,9 +357,7 @@ local function Reanchor(pf)
   pf.root:SetPoint("CENTER", anchor, "CENTER")
   pf.hit:ClearAllPoints()
   pf.hit:SetPoint("CENTER", anchor, "CENTER")
-  if plate.CanChangeHitTestPoints and plate:CanChangeHitTestPoints() then
-    plate:SetAllHitTestPoints(pf.hit) -- clickable area follows our bar (ThreatPlates Nameplate.lua:1128-1146)
-  end
+  ns.ApplyHitTest(pf)
 end
 
 -- Blizzard re-shows its frame on its own (pooling, fades): hide it again while one of our plates covers it.
@@ -446,6 +456,7 @@ function ns.RefreshPlates()
   styleVersion = styleVersion + 1 -- pooled plates without a unit restyle when they are next used
   for _, pf in pairs(ns.plates) do
     ns.StylePlate(pf)
+    ns.UpdateQuest(pf)
     ns.UpdatePlateData(pf)
   end
 end
