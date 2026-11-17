@@ -91,10 +91,10 @@ local THREAT_ROLES = { auto = "Auto", tank = "Tank", dps = "DPS & healer" }
 local THREAT_ROLE_ORDER = { "auto", "tank", "dps" }
 
 -- The one position helper: inline group with both anchor points and X/Y offsets for profile path `arg`.
-local function Pos(arg)
+local function Pos(arg, rel)
   return Group("Position", {
     { "point", Select("Anchor on element", arg .. ".point", POINTS, POINT_ORDER) },
-    { "relPoint", Select("Anchor on bar", arg .. ".relPoint", POINTS, POINT_ORDER) },
+    { "relPoint", Select("Anchor on " .. (rel or "bar"), arg .. ".relPoint", POINTS, POINT_ORDER) },
     { "x", Range("X offset", arg .. ".x", -100, 100, 1) },
     { "y", Range("Y offset", arg .. ".y", -100, 100, 1) },
   }, { inline = true })
@@ -106,7 +106,7 @@ local function TextGroup(name, arg, extra)
   list[#list + 1] = { "font", Media("Font", arg .. ".font", "font") }
   list[#list + 1] = { "size", Range("Size", arg .. ".size", 6, 32, 1) }
   list[#list + 1] = { "outline", Select("Outline", arg .. ".outline", OUTLINES, OUTLINE_ORDER) }
-  list[#list + 1] = { "pos", Pos(arg .. ".pos") }
+  list[#list + 1] = { "pos", Pos(arg .. ".pos", arg == "level" and "name") }
   return Group(name, list)
 end
 

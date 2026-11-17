@@ -65,7 +65,7 @@ local function Update(pf)
   else
     icon:Hide()
   end
-  if str and P.level.enabled and pf.showBar then
+  if str and P.level.enabled and pf.showName then
     text.lastColor = color
     text:SetText(str)
     text:SetTextColor(color.r, color.g, color.b)
@@ -92,7 +92,7 @@ ns.RegisterElement{
     pf.classIcon:SetSize(c.size, c.size)
     ns.ApplyPos(pf.classIcon, pf.health, c.pos)
     pf.levelText:SetFont(ns.Fetch("font", l.font), l.size, l.outline ~= "NONE" and l.outline or "")
-    ns.ApplyPos(pf.levelText, pf.health, l.pos)
+    ns.ApplyPos(pf.levelText, pf.name, l.pos)
     Update(pf)
   end,
   update = Update,

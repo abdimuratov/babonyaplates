@@ -3,7 +3,7 @@ local ADDON, ns = ...
 -- Auras via Blizzard's CustomAuraContainerTemplate (pattern: ThreatPlates Widgets/AurasWidgetMidnight.lua).
 -- Addon code never touches aura buttons: they are configured only inside the group initializer, which Blizzard
 -- runs in a secure call (TP :79,:437-470 "forbidden object" trap). Per plate: pf.auras holds a debuff container
--- (groups "mine" then "others") and a buff container (group "purgeable") anchored above it.
+-- (groups "mine" then "others") and a buff container (group "purgeable") above it, both centred in pf.auras.
 
 local CreateFrame, InCombatLockdown, ipairs, pairs, max = CreateFrame, InCombatLockdown, ipairs, pairs, math.max
 
@@ -119,29 +119,37 @@ local function Take(kind)
   return c
 end
 
--- Row sizes: debuff row width, its cell height, purgeable row width. A cell is the icon plus its border.
+-- Row sizes: debuff row width, its cell height, purgeable row width and cell height. A cell is the icon plus its border.
 local function Metrics(A)
-  local dw, dh, pw = 0, 0, 0
+  local dw, dh, pw, ph = 0, 0, 0, 0
   for _, g in ipairs(GROUPS) do
     local c = A[g]
     if c.enabled then
       local cell = c.size + 2 * BW[g]
       local w = c.max * (cell + A.spacing)
       if g == "purgeable" then
-        pw = w
+        pw, ph = w, cell
       else
         dw, dh = dw + w, max(dh, cell)
       end
     end
   end
-  return dw, dh, pw
+  return dw, dh, pw, ph
 end
 
+-- Bottom of the purgeable row above the debuff row (at the bottom when debuffs are off).
+local function BuffY(A, dh)
+  return dh > 0 and dh + A.spacing + 2 or 0
+end
+
+-- Containers size themselves to their content (TP AurasWidgetMidnight.lua:1094-1110), so a BOTTOM-to-BOTTOM anchor centres each row.
 local function Anchor(pf)
-  if pf.debuffC then pf.debuffC:ClearAllPoints(); pf.debuffC:SetPoint("BOTTOMLEFT", pf.auras, "BOTTOMLEFT") end
+  local A = ns.P.auras
+  local _, dh = Metrics(A)
+  if pf.debuffC then pf.debuffC:ClearAllPoints(); pf.debuffC:SetPoint("BOTTOM", pf.auras, "BOTTOM") end
   if pf.buffC then
     pf.buffC:ClearAllPoints()
-    pf.buffC:SetPoint("BOTTOMLEFT", pf.auras, "TOPLEFT", 0, ns.P.auras.spacing + 2)
+    pf.buffC:SetPoint("BOTTOM", pf.auras, "BOTTOM", 0, BuffY(A, dh))
   end
 end
 
@@ -202,23 +210,29 @@ local function Preview(pf)
     end
     pf.sample = s
   end
-  local x, shown = { debuff = 0, buff = 0 }, {}
+  local _, dh = Metrics(A)
+  local shown, vis, w = {}, {}, { debuff = 0, buff = 0 }
+  for i, d in ipairs(SAMPLE) do
+    local g = d[1]
+    shown[g] = (shown[g] or 0) + 1
+    vis[i] = A[g].enabled and shown[g] <= A[g].max
+    if vis[i] then
+      local row = g == "purgeable" and "buff" or "debuff"
+      w[row] = w[row] + A[g].size + A.spacing + 2 * BW[g]
+    end
+  end
+  local x = { debuff = -(w.debuff - A.spacing) / 2, buff = -(w.buff - A.spacing) / 2 }
   for i, d in ipairs(SAMPLE) do
     local g, b = d[1], s[i]
     local c = A[g]
-    shown[g] = (shown[g] or 0) + 1
-    if c.enabled and shown[g] <= c.max then
+    if vis[i] then
       local col = c.border or DARK
       local row = g == "purgeable" and "buff" or "debuff"
       b:SetSize(c.size, c.size)
       b:SetAlpha(g == "others" and c.alpha or 1)
       b.border:SetColorTexture(col.r, col.g, col.b, col.a or 1)
       b:ClearAllPoints()
-      if row == "buff" then
-        b:SetPoint("BOTTOMLEFT", f, "TOPLEFT", x[row], A.spacing + 2)
-      else
-        b:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", x[row], 0)
-      end
+      b:SetPoint("BOTTOMLEFT", f, "BOTTOM", x[row], row == "buff" and BuffY(A, dh) or 0)
       x[row] = x[row] + c.size + A.spacing + 2 * BW[g]
       b:Show()
     else
@@ -269,8 +283,8 @@ ns.RegisterElement{
   end,
   style = function(pf)
     local A = ns.P.auras
-    local dw, dh, pw = Metrics(A)
-    pf.auras:SetSize(max(dw, pw, 1), max(dh, 1))
+    local dw, dh, pw, ph = Metrics(A)
+    pf.auras:SetSize(max(dw, pw, 1), max(BuffY(A, dh) + ph, dh, 1))
     ns.ApplyPos(pf.auras, pf.health, A.pos)
     pf.auraKey = nil
     Anchor(pf)

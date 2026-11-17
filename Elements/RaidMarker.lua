@@ -11,7 +11,15 @@ local function Update(pf)
     idx = 8
   elseif pf.unit then
     idx = GetRaidTargetIndex(pf.unit)
-    if issecretvalue(idx) then return end -- keep what is shown
+    if issecretvalue(idx) then -- secrets go straight to the setter (ThreatPlates TargetMarker.lua:28-45)
+      if ns.P.raidMarker.enabled then
+        SetRaidTargetIconTexture(t, idx)
+        t:Show()
+      else
+        t:Hide()
+      end
+      return
+    end
   end
   if ns.P.raidMarker.enabled and idx and idx >= 1 and idx <= 8 then
     SetRaidTargetIconTexture(t, idx)

@@ -1,7 +1,7 @@
 local ADDON, ns = ...
 
 local issecretvalue = issecretvalue or function() return false end
-local UnitPower, UnitPowerMax, UnitClass = UnitPower, UnitPowerMax, UnitClass
+local UnitPower, UnitPowerMax, UnitClass, GetComboPoints = UnitPower, UnitPowerMax, UnitClass, GetComboPoints
 local GetNamePlateForUnit = C_NamePlate.GetNamePlateForUnit
 local COMBO = Enum.PowerType.ComboPoints
 local PREVIEW_MAX, PREVIEW_POINTS = 5, 3
@@ -44,7 +44,9 @@ local function Update(pf, tp)
   if pf.isPreview then
     points, max = PREVIEW_POINTS, PREVIEW_MAX
   elseif isComboClass and c.enabled and pf.unit and pf.showBar and tp ~= nil and tp == pf.plate then
-    max, points = UnitPowerMax("player", COMBO), UnitPower("player", COMBO)
+    -- Forever (Vanilla rules): points belong to the target, ThreatPlates ComboPointsWidget.lua:306-320
+    max = UnitPowerMax("player", COMBO)
+    if GetComboPoints then points = GetComboPoints("player", "target") else points = UnitPower("player", COMBO) end
     if issecretvalue(max) or issecretvalue(points) then max, points = nil, nil end
   end
   if not max or max <= 0 or not c.enabled or (points == 0 and c.hideWhenZero) then

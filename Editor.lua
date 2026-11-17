@@ -19,7 +19,7 @@ local ELEMENTS = {
   { key = "castBar",        region = "castBar",   label = "Cast bar" },
   { key = "auras",          region = "auras",     label = "Auras" },
   { key = "classification", region = "classIcon", label = "Elite icon" },
-  { key = "level",          region = "levelText", label = "Level" },
+  { key = "level",          region = "levelText", label = "Level", rel = "name" },
 }
 
 local win, pf
@@ -80,7 +80,7 @@ local function DragUpdate(e)
   local pos = ns.P[e.key].pos
   pos.x = Clamp(e.sx + (cx - e.cx) / s)
   pos.y = Clamp(e.sy + (cy - e.cy) / s)
-  ns.ApplyPos(pf[e.region], pf.health, pos) -- only x/y change, anchors stay
+  ns.ApplyPos(pf[e.region], pf[e.rel or "health"], pos) -- only x/y change, anchors stay
 end
 
 local function MakeHandle(e)

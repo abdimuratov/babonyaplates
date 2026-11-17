@@ -70,6 +70,6 @@ ns.defaults = {
       pos = { point = "BOTTOM", relPoint = "TOP", x = 0, y = 16 },
     },
     classification = { enabled = true, size = 14, pos = { point = "CENTER", relPoint = "TOPLEFT", x = 0, y = 0 } },
-    level = { enabled = true, font = "Friz Quadrata TT", size = 9, outline = "OUTLINE", pos = { point = "RIGHT", relPoint = "RIGHT", x = -2, y = 0 } },
+    level = { enabled = true, font = "Friz Quadrata TT", size = 9, outline = "OUTLINE", pos = { point = "LEFT", relPoint = "RIGHT", x = 3, y = 0 } },
   },
 }
