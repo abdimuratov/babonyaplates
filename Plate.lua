@@ -186,9 +186,7 @@ end
 -- Clickable area follows our bar, or is removed when nothing is drawn (ThreatPlates ApplyPlateHitTest, Nameplate.lua:1140).
 function ns.ApplyHitTest(pf)
   local plate = pf.plate
-  if not (plate and pf.hit and plate.CanChangeHitTestPoints) then return end
-  pf.hitDirty = not plate:CanChangeHitTestPoints() -- restricted (combat): the stacker retries later
-  if pf.hitDirty then return end
+  if not (plate and pf.hit and plate.CanChangeHitTestPoints and plate:CanChangeHitTestPoints()) then return end
   if pf.showName or pf.showBar then
     plate:SetAllHitTestPoints(pf.hit)
   else
@@ -363,21 +361,17 @@ local function HideBlizzard(uf)
   return false
 end
 
--- The one place root and hit frame are anchored. pf.stackOff (screen units, set by Elements/Stacking.lua) shifts
--- both up; SetPoint offsets live in each frame's own scale, so divide by its effective scale.
+-- The one place root and hit frame are anchored.
 function ns.PlaceRoot(pf)
   local uf, plate = pf.ufr, pf.plate
   if not uf then return end
   -- A reparented UnitFrame has no points left, so a frame anchored to it would vanish.
   local anchor = origParent[uf] and plate or uf
-  local off = pf.stackOff or 0
-  local rs = pf.root:GetEffectiveScale()
-  pf.stackRS = rs
   pf.root:ClearAllPoints()
-  pf.root:SetPoint("CENTER", anchor, "CENTER", 0, off / rs)
+  pf.root:SetPoint("CENTER", anchor, "CENTER")
   pf.hit:ClearAllPoints()
-  pf.hit:SetPoint("CENTER", anchor, "CENTER", 0, off / plate:GetEffectiveScale())
-  ns.ApplyHitTest(pf) -- in combat this leaves the old hit area until it is allowed again
+  pf.hit:SetPoint("CENTER", anchor, "CENTER")
+  ns.ApplyHitTest(pf)
 end
 
 -- Blizzard re-shows its frame on its own (pooling, fades): hide it again while one of our plates covers it.

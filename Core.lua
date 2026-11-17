@@ -99,7 +99,7 @@ function ns.ApplyCVars()
 
   -- nameplateStackingTypes is a bitfield indexed by Enum.NamePlateStackType (replaces nameplateMotion);
   -- bitfield CVars are only accessible via C_CVar.Get/SetCVarBitfield (see ThreatPlates Options.lua:671-681).
-  -- Both flags stay off: Elements/Stacking.lua does the stacking (the engine cannot tell name-only plates from bar plates).
+  -- All flags stay off: no nameplate stacking at all.
   if Enum.NamePlateStackType and ns.CVarExists("nameplateStackingTypes") then
     for _, index in pairs(Enum.NamePlateStackType) do
       if C_CVar.GetCVarBitfield("nameplateStackingTypes", index) then
@@ -137,13 +137,13 @@ end
 
 local CONFLICTS = { "TidyPlates_ThreatPlates", "Plater", "Kui_Nameplates", "Platynator" }
 
--- Old saved keys: combo.size became width + height; cvars.stacking / stackEnemy / stackFriendly are gone (see ns.P.stacking).
+-- Old saved keys: combo.size became width + height; the stacking settings are gone.
 local function Migrate()
   local c, cv = ns.P.combo, ns.P.cvars
   if c.size ~= nil then
     c.width, c.height, c.size = c.size, c.size, nil
   end
-  cv.stacking, cv.stackEnemy, cv.stackFriendly = nil, nil, nil
+  ns.P.stacking, cv.stacking, cv.stackEnemy, cv.stackFriendly = nil, nil, nil, nil
 end
 
 local function OnProfileChanged()

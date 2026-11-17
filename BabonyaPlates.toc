@@ -15,6 +15,5 @@ Elements/ComboPoints.lua
 Elements/RaidMarker.lua
 Elements/QuestIcon.lua
 Elements/Highlight.lua
-Elements/Stacking.lua
 Options.lua
 Editor.lua

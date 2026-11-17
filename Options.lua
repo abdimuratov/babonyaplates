@@ -141,8 +141,6 @@ end
 
 local function CVarGroup()
   return Group("Game settings", {
-    { "stackNameOnly", Toggle("Stack name-only plates", "stacking.nameOnly", "Push plates that show only a name apart vertically so the names do not overlap.") },
-    { "stackWithBars", Toggle("Stack plates with health/power bars", "stacking.withBars", "Push plates that show a health or power bar apart vertically so the bars do not overlap.") },
     { "maxDistance", Range("Max distance", "cvars.maxDistance", 10, 100, 1) },
   })
 end
@@ -236,7 +234,7 @@ local function Build()
       { "fadeEnabled", Toggle("Fade other plates", "highlight.fadeEnabled") },
       { "fadeAlpha", Range("Faded opacity", "highlight.fadeAlpha", 0, 1, 0.05, { isPercent = true }) },
     }), { "highlight" } },
-    { "cvars", CVarGroup(), { "cvars", "stacking" } },
+    { "cvars", CVarGroup(), { "cvars" } },
   }
   for i, s in ipairs(sections) do
     s[2].order = i

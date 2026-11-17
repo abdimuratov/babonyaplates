@@ -40,6 +40,5 @@ ns.defaults = {
       fadeEnabled = true, fadeAlpha = 0.6,
     },
     cvars = { maxDistance = 45 },
-    stacking = { nameOnly = true, withBars = false }, -- own stacker (Elements/Stacking.lua); engine stacking is forced off
   },
 }
