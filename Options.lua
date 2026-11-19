@@ -301,4 +301,43 @@ end
 AceConfig:RegisterOptionsTable("BabonyaPlates", Build)
 AceConfigDialog:AddToBlizOptions("BabonyaPlates", "BabonyaPlates")
 
-ns.OpenOptions = function() AceConfigDialog:Open("BabonyaPlates") end
+-- "Reload UI" next to Close on the standalone window (some settings only apply after a reload).
+-- AceGUI frames are pooled and reused by other addons' windows, so the button and the shortened
+-- status bar are undone whenever the window hides.
+local reloadButton
+local hookedFrames = setmetatable({}, { __mode = "k" })
+
+local function Detach(f)
+  if reloadButton and reloadButton:GetParent() == f then
+    reloadButton:Hide()
+    reloadButton:SetParent(UIParent)
+    local status = f.obj and f.obj.statustext and f.obj.statustext:GetParent()
+    if status then status:SetPoint("BOTTOMRIGHT", -132, 15) end -- AceGUIContainer-Frame default
+  end
+end
+
+local function AddReloadButton()
+  local widget = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames.BabonyaPlates
+  if not (widget and widget.frame and widget.statustext) then return end
+  local f = widget.frame
+  if not reloadButton then
+    reloadButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    reloadButton:SetSize(100, 20)
+    reloadButton:SetText("Reload UI")
+    reloadButton:SetScript("OnClick", function() (C_UI and C_UI.Reload or ReloadUI)() end)
+  end
+  reloadButton:SetParent(f)
+  reloadButton:ClearAllPoints()
+  reloadButton:SetPoint("BOTTOMRIGHT", -131, 17) -- left of Close (BOTTOMRIGHT -27, width 100)
+  reloadButton:Show()
+  widget.statustext:GetParent():SetPoint("BOTTOMRIGHT", -236, 15)
+  if not hookedFrames[f] then
+    hookedFrames[f] = true
+    f:HookScript("OnHide", Detach)
+  end
+end
+
+ns.OpenOptions = function()
+  AceConfigDialog:Open("BabonyaPlates")
+  AddReloadButton()
+end

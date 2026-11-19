@@ -1,7 +1,7 @@
 local ADDON, ns = ...
 
-local CreateFrame, GetCursorPosition, IsMouseButtonDown = CreateFrame, GetCursorPosition, IsMouseButtonDown
-local floor, min, max, pairs, ipairs = math.floor, math.min, math.max, pairs, ipairs
+local CreateFrame, GetCursorPosition, IsMouseButtonDown, IsShiftKeyDown = CreateFrame, GetCursorPosition, IsMouseButtonDown, IsShiftKeyDown
+local floor, min, max, abs, pairs, ipairs = math.floor, math.min, math.max, math.abs, pairs, ipairs
 local BackdropTemplate = BackdropTemplateMixin and "BackdropTemplate"
 
 local FRAME_NAME = "BabonyaPlatesEditorFrame" -- global name is required by UISpecialFrames
@@ -78,8 +78,12 @@ local function DragUpdate(e)
   local cx, cy = GetCursorPosition()
   local s = pf.root:GetEffectiveScale() -- offsets live in the root's coordinate space
   local pos = ns.P[e.key].pos
-  pos.x = Clamp(e.sx + (cx - e.cx) / s)
-  pos.y = Clamp(e.sy + (cy - e.cy) / s)
+  local dx, dy = (cx - e.cx) / s, (cy - e.cy) / s
+  if IsShiftKeyDown() then -- Shift: move along the main axis only
+    if abs(dx) > abs(dy) then dy = 0 else dx = 0 end
+  end
+  pos.x = Clamp(e.sx + dx)
+  pos.y = Clamp(e.sy + dy)
   ns.ApplyPos(pf[e.region], pf[e.rel or "health"], pos) -- only x/y change, anchors stay
 end
 
@@ -159,7 +163,7 @@ local function Build()
 
   local hint = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   hint:SetPoint("BOTTOMLEFT", 20, 22)
-  hint:SetText("Drag elements to move them. Use the settings window for exact values and anchors.")
+  hint:SetText("Drag elements to move them; hold Shift to move only horizontally or vertically.\nUse the settings window for exact values and anchors.")
 
   local reset = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
   reset:SetSize(130, 22)
