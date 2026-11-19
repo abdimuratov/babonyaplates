@@ -71,15 +71,5 @@ ns.defaults = {
     },
     classification = { enabled = true, size = 14, pos = { point = "CENTER", relPoint = "TOPLEFT", x = 0, y = 0 } },
     level = { enabled = true, font = "Friz Quadrata TT", size = 9, outline = "OUTLINE", pos = { point = "LEFT", relPoint = "RIGHT", x = 3, y = 0 } },
-
-    -- Fixed on-screen player health bar (PersonalBar.lua). visibility: "always" | "smart" (in combat, or health/power
-    -- not full) | "combat". pos is an offset from the centre of UIParent. Border follows bar.border.
-    personal = {
-      enabled = true, visibility = "smart", width = 180, height = 12, texture = "Blizzard",
-      classColor = true, color = { r = 0.2, g = 0.8, b = 0.2, a = 1 },
-      hpText = true, font = "Friz Quadrata TT", size = 10, outline = "OUTLINE",
-      power = { enabled = false, height = 6 },
-      locked = true, pos = { x = 0, y = -140 },
-    },
   },
 }

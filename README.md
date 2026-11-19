@@ -16,7 +16,6 @@ A nameplate addon for WoW Forever (Interface 16001): choose per unit type whethe
 - Elite / rare / boss icon and difficulty-coloured level
 - "Bars only in combat" per unit type
 - Profile import / export strings
-- Personal bar: your health fixed on screen (in combat or when not full), optional power bar with druid form mana
 - Layout editor with drag and drop (`/bpt edit`), profiles
 
 ## Installation
