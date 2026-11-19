@@ -147,6 +147,10 @@ end
 local function CVarGroup()
   return Group("Game settings", {
     { "maxDistance", Range("Max distance", "cvars.maxDistance", 10, 100, 1) },
+    { "occludedAlpha", Range("Opacity behind obstacles", "cvars.occludedAlpha", 0, 1, 0.05,
+      { isPercent = true, desc = "Plates of units hidden behind walls or objects (seen from the camera). 100% = never fade." }) },
+    { "minAlpha", Range("Opacity of distant plates", "cvars.minAlpha", 0, 1, 0.05,
+      { isPercent = true, desc = "Plates of far-away units. 100% = never fade." }) },
   })
 end
 
@@ -278,6 +282,8 @@ local function Build()
   -- Hide each game setting whose CVar is missing on this client (names match ns.ApplyCVars in Core.lua).
   local g = options.args.cvars.args
   g.maxDistance.hidden = function() return not ns.CVarExists("nameplateMaxDistance") end
+  g.occludedAlpha.hidden = function() return not ns.CVarExists("nameplateOccludedAlphaMult") end
+  g.minAlpha.hidden = function() return not ns.CVarExists("nameplateMinAlpha") end
 
   options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(ns.db)
   options.args.profiles.order = 100

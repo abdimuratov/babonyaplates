@@ -39,7 +39,7 @@ ns.defaults = {
       scaleEnabled = true, scale = 1.2, borderEnabled = true, borderColor = { r = 1, g = 1, b = 1, a = 1 },
       fadeEnabled = true, fadeAlpha = 0.6,
     },
-    cvars = { maxDistance = 45 },
+    cvars = { maxDistance = 45, occludedAlpha = 1, minAlpha = 1 }, -- alphas: 1 = plates never fade (Classic behaviour)
 
     -- v2 ---------------------------------------------------------------------------------------
     -- Threat colors hostile/neutral NPC bars while they are in combat. role: "auto" | "tank" | "dps".

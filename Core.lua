@@ -101,6 +101,12 @@ function ns.ApplyCVars()
   for _, name in ipairs(NAME_CVARS) do SetCVar(name, 0) end
 
   SetCVar("nameplateMaxDistance", P.cvars.maxDistance)
+  -- The engine fades the plate frame our root sits on (units behind obstacles, far units); other nameplate
+  -- addons leave these CVars changed, which made plates seem to appear only from some camera angles.
+  SetCVar("nameplateOccludedAlphaMult", P.cvars.occludedAlpha)
+  SetCVar("nameplateMinAlpha", P.cvars.minAlpha)
+  SetCVar("nameplateMaxAlpha", 1)
+  SetCVar("nameplateSelectedAlpha", 1)
 
   -- nameplateStackingTypes is a bitfield indexed by Enum.NamePlateStackType (replaces nameplateMotion);
   -- bitfield CVars are only accessible via C_CVar.Get/SetCVarBitfield (see ThreatPlates Options.lua:671-681).
