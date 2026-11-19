@@ -287,10 +287,10 @@ local function PercentText(unit)
   return ""
 end
 
-local function UpdateHpText(pf)
+-- "" for mode none. Also used by PersonalBar.lua.
+function ns.HpText(unit)
   local mode = ns.P.hpText.mode
-  if mode == "none" then return end
-  local unit = pf.unit
+  if mode == "none" then return "" end
 
   -- Value modes need AbbreviateNumbers (the only secret-safe formatter); percent is the fallback.
   if mode ~= "percent" and AbbreviateNumbers then
@@ -301,10 +301,14 @@ local function UpdateHpText(pf)
     if mode == "both" then
       text = text .. " - " .. PercentText(unit)
     end
-    pf.hpText:SetText(text)
-  else
-    pf.hpText:SetText(PercentText(unit))
+    return text
   end
+  return PercentText(unit)
+end
+
+local function UpdateHpText(pf)
+  if ns.P.hpText.mode == "none" then return end
+  pf.hpText:SetText(ns.HpText(pf.unit))
 end
 
 local function UpdateHealth(pf)

@@ -129,12 +129,14 @@ function ns.RefreshAll()
   ns.ApplyCVars()
   if ns.RefreshPlates then ns.RefreshPlates() end
   if ns.RefreshEditor then ns.RefreshEditor() end
+  if ns.RefreshPersonal then ns.RefreshPersonal() end
 end
 
 -- Only touches our own regions, so it is safe in combat.
 function ns.ToggleBars()
   ns.barsHidden = not ns.barsHidden
   if ns.RefreshVisibility then ns.RefreshVisibility() end
+  if ns.RefreshPersonal then ns.RefreshPersonal() end
   addon:Print(ns.barsHidden and "Health bars hidden." or "Health bars shown.")
 end
 

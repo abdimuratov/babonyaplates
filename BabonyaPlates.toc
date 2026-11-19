@@ -18,6 +18,7 @@ Elements/Highlight.lua
 Elements/CastBar.lua
 Elements/Auras.lua
 Elements/Classification.lua
+PersonalBar.lua
 Options.lua
 ImportExport.lua
 Editor.lua
