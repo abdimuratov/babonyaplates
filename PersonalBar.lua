@@ -179,30 +179,46 @@ local function UpdatePower()
   end
 end
 
--- Any secret value in the comparison -> show (fail-safe).
-local function NotFull()
+-- Alpha 0 at full health, 1 below (same Step curve as ThreatPlates StatusText.lua:50-54).
+local HIDE_AT_FULL
+if C_CurveUtil and C_CurveUtil.CreateCurve and Enum.LuaCurveType and UnitHealthPercent then
+  HIDE_AT_FULL = C_CurveUtil.CreateCurve()
+  HIDE_AT_FULL:SetType(Enum.LuaCurveType.Step)
+  HIDE_AT_FULL:AddPoint(0, 1)
+  HIDE_AT_FULL:AddPoint(0.9999999, 1)
+  HIDE_AT_FULL:AddPoint(1, 0)
+end
+
+local function PowerNotFull()
+  if not ns.P.personal.power.enabled then return false end
+  local ptype = UnitPowerType("player")
+  local cur, pmax = UnitPower("player"), UnitPowerMax("player")
+  -- shortcut: secret power can't be compared, so it is ignored and health alone decides.
+  if issecretvalue(ptype) or issecretvalue(cur) or issecretvalue(pmax) or cur == nil or pmax == nil then return false end
+  if ptype == RAGE then return cur > 0 end -- rage rests at 0
+  return cur < pmax
+end
+
+-- "smart" mode out of combat: returns show, alpha. The player's health can be secret even out of combat,
+-- so then the bar stays shown and a curve turns its alpha to 0 at full health (no comparison needed).
+local function SmartVisibility()
+  if PowerNotFull() then return true, 1 end
   local hp, hm = UnitHealth("player"), UnitHealthMax("player")
-  if issecretvalue(hp) or issecretvalue(hm) or hp == nil or hm == nil then return true end
-  if hp < hm then return true end
-  if ns.P.personal.power.enabled then
-    local ptype = UnitPowerType("player")
-    local cur, pmax = UnitPower("player"), UnitPowerMax("player")
-    if issecretvalue(ptype) or issecretvalue(cur) or issecretvalue(pmax) or cur == nil or pmax == nil then return true end
-    if ptype == RAGE then return cur > 0 end -- rage rests at 0
-    return cur < pmax
-  end
-  return false
+  if not issecretvalue(hp) and not issecretvalue(hm) and hp and hm then return hp < hm, 1 end
+  if HIDE_AT_FULL then return true, UnitHealthPercent("player", true, HIDE_AT_FULL) end
+  return true, 1 -- fail-safe
 end
 
 local function UpdateVisibility()
   local p = ns.P.personal
-  local show
+  local show, alpha = false, 1
   if not p.enabled then show = false
   elseif not p.locked then show = true -- being positioned
   elseif ns.barsHidden then show = false
   elseif p.visibility == "always" or inCombat then show = true
   elseif p.visibility == "combat" then show = false
-  else show = NotFull() end
+  else show, alpha = SmartVisibility() end
+  f:SetAlpha(alpha)
   f:SetShown(show)
 end
 
